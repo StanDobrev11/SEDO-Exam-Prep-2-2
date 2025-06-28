@@ -1,52 +1,17 @@
 pipeline {
     agent any
-
-    options {
-        skipStagesAfterUnstable()
-    }
     
-        environment {
+    environment {
         DOTNET_VERSION = "6.0.417"
         DOTNET_INSTALL_DIR = "${HOME}/dotnet"
         DOTNET_ROOT = "${HOME}/dotnet"
         PATH = "${HOME}/dotnet:${PATH}" // No `env.` here – Jenkins handles this
     }
 
-    triggers {
-        pollSCM('* * * * *')  // Optional: can remove if using GitHub webhooks
-    }
-
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
-            }
-        }
-
-        stage('Branch Filter') {
-            steps {
-                script {
-                    def branch = env.BRANCH_NAME ?: sh(
-                        returnStdout: true,
-                        script: 'git name-rev --name-only HEAD'
-                    ).trim()
-        
-                    // Normalize
-                    branch = branch.replaceAll(/^remotes\/origin\//, '')
-                                   .replaceAll(/^origin\//, '')
-                                   .replaceAll(/~.*/, '')
-        
-                    echo "Detected branch: ${branch}"
-        
-                    def allowedBranches = ['main', 'develop', 'feature', 'release']
-        
-                    if (!allowedBranches.contains(branch)) {
-                        echo "Skipping pipeline: '${branch}' not in allowed list (${allowedBranches.join(', ')})"
-                        return  // Exit gracefully
-                    }
-        
-                    echo "Proceeding with pipeline for branch: ${branch}"
-                }
             }
         }
 
