@@ -30,19 +30,22 @@ pipeline {
                         returnStdout: true,
                         script: 'git name-rev --name-only HEAD'
                     ).trim()
-
-                    // Normalize branch name
+        
+                    // Normalize
                     branch = branch.replaceAll(/^remotes\/origin\//, '')
                                    .replaceAll(/^origin\//, '')
                                    .replaceAll(/~.*/, '')
-
+        
                     echo "Detected branch: ${branch}"
-
-                    if (branch != 'main') {
-                        echo "Skipping pipeline: not on 'main' branch."
-                        currentBuild.result = 'SUCCESS'
-                        error("Exiting early because branch is not 'main'.")
+        
+                    def allowedBranches = ['main', 'develop', 'feature', 'release']
+        
+                    if (!allowedBranches.contains(branch)) {
+                        echo "Skipping pipeline: '${branch}' not in allowed list (${allowedBranches.join(', ')})"
+                        return  // Exit gracefully
                     }
+        
+                    echo "Proceeding with pipeline for branch: ${branch}"
                 }
             }
         }
