@@ -46,7 +46,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'dotnet test --no-build'
+                sh 'dotnet test --no-build --framework net6.0'
             }
         }
     }
