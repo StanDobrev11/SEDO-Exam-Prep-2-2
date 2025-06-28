@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        skipStagesAfterUnstable()
+    }
+
     environment {
         DOTNET_VERSION = "6.0.417"
         DOTNET_INSTALL_DIR = "${HOME}/dotnet"
@@ -9,25 +13,28 @@ pipeline {
     }
 
     triggers {
-        pollSCM('* * * * *')  // Polling every 5 min, optional if using webhook
+        pollSCM('H/5 * * * *')  // Optional: remove if using webhooks
     }
 
-    options {
-        skipStagesAfterUnstable()
-    }
+    stages {
+        stage('Branch Filter') {
+            steps {
+                script {
+                    def branch = env.BRANCH_NAME ?: sh(
+                        returnStdout: true,
+                        script: 'git rev-parse --abbrev-ref HEAD'
+                    ).trim()
 
-    stage('Branch Filter') {
-        steps {
-            script {
-                def branch = env.BRANCH_NAME ?: sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
-                echo "Detected branch: ${branch}"
-                if (!(branch == 'main')) {
-                    currentBuild.result = 'SUCCESS'
-                    error("Exiting early because branch is not 'main'.")
+                    echo "Detected branch: ${branch}"
+
+                    if (branch != 'main') {
+                        echo "Skipping pipeline: not on 'main' branch."
+                        currentBuild.result = 'SUCCESS'
+                        error("Exiting early because branch is not 'main'.")
+                    }
                 }
             }
         }
-    }
 
         stage('Checkout') {
             steps {
@@ -61,7 +68,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'dotnet test --no-build'
+                sh 'dotnet test --no-build --framework net6.0'
             }
         }
     }
