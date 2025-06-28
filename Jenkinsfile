@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none
 
     options {
         skipStagesAfterUnstable()
@@ -10,6 +10,7 @@ pipeline {
         DOTNET_INSTALL_DIR = "${HOME}/dotnet"
         DOTNET_ROOT = "${HOME}/dotnet"
         PATH = "${HOME}/dotnet:${PATH}"
+        BUILD_NODE = ''
     }
 
     triggers {
@@ -17,9 +18,11 @@ pipeline {
     }
 
     stages {
-        stage('Branch Filter') {
+        stage('Detect Branch & Agent') {
+            agent { label 'master' } // Run detection stage anywhere (safely)
             steps {
                 script {
+                    // Detect current branch
                     def branch = env.BRANCH_NAME ?: sh(
                         returnStdout: true,
                         script: 'git rev-parse --abbrev-ref HEAD'
@@ -30,19 +33,29 @@ pipeline {
                     if (branch != 'main') {
                         echo "Skipping pipeline: not on 'main' branch."
                         currentBuild.result = 'SUCCESS'
-                        error("Exiting early because branch is not 'main'.")
+                        error("Exiting early.")
                     }
+
+                    // Check if 'TestAgent' node is online
+                    def available = Jenkins.instance.slaves.find {
+                        it.name == 'TestAgent' && it.computer.online
+                    }
+
+                    env.BUILD_NODE = available ? 'TestAgent' : 'master'
+                    echo "Selected node: ${env.BUILD_NODE}"
                 }
             }
         }
 
         stage('Checkout') {
+            agent { label "${env.BUILD_NODE}" }
             steps {
                 checkout scm
             }
         }
 
         stage('Setup .NET SDK') {
+            agent { label "${env.BUILD_NODE}" }
             steps {
                 sh '''
                     echo "Installing .NET SDK $DOTNET_VERSION..."
@@ -55,18 +68,21 @@ pipeline {
         }
 
         stage('Restore Dependencies') {
+            agent { label "${env.BUILD_NODE}" }
             steps {
                 sh 'dotnet restore'
             }
         }
 
         stage('Build') {
+            agent { label "${env.BUILD_NODE}" }
             steps {
                 sh 'dotnet build --no-restore'
             }
         }
 
         stage('Test') {
+            agent { label "${env.BUILD_NODE}" }
             steps {
                 sh 'dotnet test --no-build --framework net6.0'
             }
