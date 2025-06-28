@@ -8,6 +8,10 @@ pipeline {
         PATH = "${HOME}/dotnet:${PATH}" // No `env.` here – Jenkins handles this
     }
 
+    triggers {
+        pollSCM('* * * * *')
+    }
+
     stages {
         stage('Checkout') {
             steps {
