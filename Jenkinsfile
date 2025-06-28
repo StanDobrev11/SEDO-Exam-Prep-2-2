@@ -16,21 +16,18 @@ pipeline {
         skipStagesAfterUnstable()
     }
 
-    stages {
-        stage('Branch Filter') {
-            when {
-                not {
-                    branch 'main'
-                }
-            }
-            steps {
-                echo "Skipping pipeline: not running on 'main' branch."
-                script {
+    stage('Branch Filter') {
+        steps {
+            script {
+                def branch = env.BRANCH_NAME ?: sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+                echo "Detected branch: ${branch}"
+                if (!(branch == 'main')) {
                     currentBuild.result = 'SUCCESS'
                     error("Exiting early because branch is not 'main'.")
                 }
             }
         }
+    }
 
         stage('Checkout') {
             steps {
