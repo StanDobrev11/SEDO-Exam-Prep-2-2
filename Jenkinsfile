@@ -9,6 +9,13 @@ pipeline {
     }
 
     stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }            
+        
         stage('Setup .NET') {
             steps {
                 sh '''
